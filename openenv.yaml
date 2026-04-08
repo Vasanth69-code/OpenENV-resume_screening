@@ -1,0 +1,8 @@
+name: resume_screening
+version: "0.1.0"
+description: "A real-world RL environment for Candidate Resume Screening / Selection. Agents must evaluate candidate resumes against a job description, selecting the best matches and rejecting the rest. It provides realistic scenarios (HR triage) and evaluates agent reasoning capabilities, avoiding simple toys."
+author: "OpenEnv Hackathon Participant"
+license: "MIT"
+components:
+  client: "client:ResumeScreeningEnv"
+  server: "server.environment:ResumeScreeningEnvironment"

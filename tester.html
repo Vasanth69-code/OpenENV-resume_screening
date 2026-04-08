@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenEnv HR Agent Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        h1,
+        h2,
+        h3,
+        .font-display {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Glassmorphism setup */
+        .glass {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        /* Subtle glowing dots background */
+        .bg-mesh {
+            background-color: #0f172a;
+            background-image: radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 0.2) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 0.2) 0, transparent 50%);
+        }
+
+        /* Micro animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes pulseBorder {
+            0% {
+                border-color: rgba(99, 102, 241, 0.3);
+            }
+
+            50% {
+                border-color: rgba(99, 102, 241, 0.8);
+                box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+            }
+
+            100% {
+                border-color: rgba(99, 102, 241, 0.3);
+            }
+        }
+
+        .active-task-pulse {
+            animation: pulseBorder 2s infinite;
+        }
+
+        button {
+            transition: all 0.2s ease-in-out;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+
+<body class="bg-mesh text-slate-200 min-h-screen overscroll-none overflow-x-hidden p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        <!-- Header Area -->
+        <header
+            class="glass rounded-2xl p-6 md:p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+                <h1
+                    class="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-cyan-400 via-indigo-400 to-fuchsia-400 text-transparent bg-clip-text mb-3">
+                    HR Intelligence Triage
+                </h1>
+                <p class="text-slate-400 text-lg flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    OpenEnv Server: <span class="text-slate-300 font-mono">127.0.0.1:8000</span>
+                </p>
+            </div>
+        </header>
+
+        <!-- Onboarding Guidelines (Visible when no task is active) -->
+        <section id="guidelines"
+            class="glass-card rounded-2xl p-8 shadow-xl animate-fade-in text-center max-w-4xl mx-auto mt-12 border border-indigo-500/30">
+            <div class="inline-flex items-center justify-center p-4 bg-indigo-500/10 rounded-full mb-6">
+                <svg class="w-12 h-12 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M13 2v4h4M9 13h6M9 17h6M9 9h.01"></path>
+                </svg>
+            </div>
+            <h2 class="text-3xl font-display font-bold text-white mb-4">Select an Evaluation Difficulty</h2>
+            <p class="text-slate-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+                This GUI lets you manually play the role of the AI Agent. You will evaluate candidate resumes against a
+                job description.
+                <strong>Start a task below to trigger the WebSocket connection.</strong> Your task is to correctly Hire
+                or Pass candidates to earn the maximum environmental scalar reward (1.0).
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <button onclick="startTask('easy')"
+                    class="group relative overflow-hidden bg-slate-800 hover:bg-slate-700 border border-emerald-500/50 rounded-xl p-6 text-left transition-all">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <h3 class="text-xl font-bold text-emerald-400 mb-2 font-display">Easy Task</h3>
+                    <p class="text-sm text-slate-400">Basic keyword checks. Does the candidate have the exact required
+                        skills?</p>
+                </button>
+
+                <button onclick="startTask('medium')"
+                    class="group relative overflow-hidden bg-slate-800 hover:bg-slate-700 border border-amber-500/50 rounded-xl p-6 text-left transition-all">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <h3 class="text-xl font-bold text-amber-400 mb-2 font-display">Medium Task</h3>
+                    <p class="text-sm text-slate-400">Trade-offs. Weigh candidate seniority against their partial stack
+                        experience.</p>
+                </button>
+
+                <button onclick="startTask('hard')"
+                    class="group relative overflow-hidden bg-slate-800 hover:bg-slate-700 border border-rose-500/50 rounded-xl p-6 text-left transition-all">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <h3 class="text-xl font-bold text-rose-400 mb-2 font-display">Hard Task</h3>
+                    <p class="text-sm text-slate-400">Complex rules. Spot anti-patterns (like job-hopping) and
+                        soft-skill hints.</p>
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Workspace (Hidden initially) -->
+        <main id="workspace" class="hidden">
+            <!-- Live Status Bar -->
+            <div class="flex justify-between items-center mb-6 px-2">
+                <div id="status-bar"
+                    class="px-5 py-3 glass rounded-full flex items-center gap-3 text-sm font-medium text-slate-300">
+                    <svg class="w-5 h-5 text-indigo-400 animate-spin hidden" id="spinner" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                    <span id="status-text">Connecting to simulation...</span>
+                </div>
+
+                <button onclick="disconnect()"
+                    class="text-slate-400 hover:text-white underline text-sm px-4 py-2 opacity-80 hover:opacity-100 transition">
+                    End Simulation
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Panel: Job Info & Context -->
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="glass-card rounded-2xl p-6 shadow-lg border-t-2 border-t-indigo-500">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-white font-display">Target Constraints</h3>
+                        </div>
+                        <div class="bg-slate-900/50 p-4 rounded-xl text-slate-300 text-sm leading-relaxed" id="jd">
+                            <!-- Job description goes here -->
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-6 shadow-lg">
+                        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-3">Queue Status
+                        </h3>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl font-extrabold text-white" id="c-rem">0</span>
+                            <span class="text-slate-400 font-medium">candidates remaining</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Candidate Profile & Actions -->
+                <div class="lg:col-span-8">
+                    <div class="glass-card rounded-2xl p-8 shadow-xl active-task-pulse relative overflow-hidden">
+                        <!-- Decorator blur -->
+                        <div
+                            class="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none">
+                        </div>
+
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-end mb-6">
+                                <div>
+                                    <h4 class="text-indigo-400 font-semibold mb-1 tracking-wide uppercase text-sm">
+                                        Evaluating Candidate</h4>
+                                    <h2 class="text-4xl font-extrabold text-white font-display" id="c-name">Loading...
+                                    </h2>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-slate-900/80 border border-slate-700/50 p-6 rounded-xl shadow-inner mb-8 min-h-[160px]">
+                                <p class="text-slate-300 font-mono text-base whitespace-pre-wrap leading-relaxed"
+                                    id="c-resume">
+                                    Fetching resume payload...
+                                </p>
+                            </div>
+
+                            <!-- Action Controls -->
+                            <div id="controls" class="grid grid-cols-2 gap-4">
+                                <button onclick="submitDecision('select')"
+                                    class="group flex justify-center items-center gap-3 px-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition-all">
+                                    <svg class="w-6 h-6 transform group-hover:scale-110 transition-transform"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span>Extend Offer</span>
+                                </button>
+                                <button onclick="submitDecision('reject')"
+                                    class="group flex justify-center items-center gap-3 px-6 py-5 bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 text-white font-bold rounded-xl shadow-lg transition-all">
+                                    <svg class="w-6 h-6 text-rose-400 transform group-hover:scale-110 transition-transform"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z">
+                                        </path>
+                                    </svg>
+                                    <span>Pass (Reject)</span>
+                                </button>
+                            </div>
+
+                            <!-- Completion State -->
+                            <div id="completion" class="hidden text-center py-6">
+                                <div
+                                    class="inline-flex justify-center items-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mb-4">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-2xl font-bold font-display text-white mb-2">Evaluation Complete</h3>
+                                <p class="text-slate-400 mb-6">You have processed all candidates for this difficulty
+                                    level.</p>
+                                <button onclick="disconnect()"
+                                    class="px-8 py-3 glass rounded-xl font-bold text-white hover:bg-slate-700 transition">Return
+                                    to Main Menu</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let ws = null;
+
+        function animateSwap(elementId, newValue) {
+            const el = document.getElementById(elementId);
+            el.style.opacity = '0';
+            setTimeout(() => {
+                el.innerText = newValue;
+                el.style.opacity = '1';
+            }, 150);
+        }
+
+        function log(msg, success = true, reward = null) {
+            const st = document.getElementById('status-text');
+            const spinner = document.getElementById('spinner');
+            spinner.classList.add('hidden');
+
+            // Build rich feedback
+            let htmlContent = `<span class="opacity-80">System:</span> ${msg}`;
+            if (reward !== null) {
+                const rewardColor = reward > 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
+                htmlContent += ` <span class="mx-2 opacity-30">|</span> <span class="${rewardColor}">Reward: +${reward.toFixed(2)}</span>`;
+            }
+            st.innerHTML = htmlContent;
+        }
+
+        function disconnect() {
+            if (ws) ws.close();
+            document.getElementById('workspace').classList.add('hidden');
+            document.getElementById('guidelines').classList.remove('hidden');
+            document.getElementById('guidelines').classList.add('animate-fade-in');
+        }
+
+        function startTask(task) {
+            if (ws) ws.close();
+            ws = new WebSocket("ws://127.0.0.1:8000/ws");
+
+            document.getElementById('guidelines').classList.add('hidden');
+            const workspace = document.getElementById('workspace');
+            workspace.classList.remove('hidden');
+            workspace.classList.add('animate-fade-in');
+
+            document.getElementById('controls').classList.remove('hidden');
+            document.getElementById('completion').classList.add('hidden');
+            document.getElementById('spinner').classList.remove('hidden');
+            document.getElementById('status-text').innerText = `Connecting and preparing [${task}] simulations...`;
+
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ type: "reset", data: { task: task } }));
+            };
+
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                handleMessage(data);
+            };
+
+            ws.onerror = () => {
+                log("Connection failed. Is the Uvicorn server running on 127.0.0.1:8000?", false);
+            }
+        }
+
+        function handleMessage(data) {
+            console.log("WS Data:", data);
+
+            // Check for server-side errors
+            if (data.status === "error") {
+                log("Server Exception: " + data.message, false);
+                return;
+            }
+
+            // OpenEnv wraps endpoints inside 'result' or sends raw observation
+            let rawObs = null;
+            let reward = null;
+
+            if (data.observation) {
+                rawObs = data.observation;
+                reward = data.reward;
+            } else if (data.data && data.data.observation) {
+                rawObs = data.data.observation;
+                reward = data.data.reward;
+            } else if (data.job_description) {
+                // The payload is immediately the observation without any wrapper
+                rawObs = data;
+                reward = data.reward;
+            } else if (data.result && data.result.observation) {
+                rawObs = data.result.observation;
+                reward = data.result.reward;
+            } else if (data.result && data.result.job_description) {
+                rawObs = data.result;
+                reward = data.result.reward;
+            } else {
+                log("Debug Raw Payload: " + JSON.stringify(data).substring(0, 100), false);
+                return;
+            }
+
+            if (rawObs) {
+                // Render Status
+                if (reward !== undefined && reward !== null) {
+                    log(rawObs.feedback, true, reward);
+                } else {
+                    log(rawObs.feedback || "Agent Ready for Screening");
+                }
+
+                if (rawObs.done) {
+                    animateSwap('c-name', "Task Fully Graded");
+                    animateSwap('c-rem', "0");
+                    animateSwap('c-resume', "All profiles completed.");
+                    document.getElementById('controls').classList.add('hidden');
+                    document.getElementById('completion').classList.remove('hidden');
+                    document.getElementById('completion').classList.add('animate-fade-in');
+                    return;
+                }
+
+                // Render Data
+                document.getElementById('jd').innerText = rawObs.job_description;
+                if (rawObs.current_candidate) {
+                    animateSwap('c-name', rawObs.current_candidate.name);
+                    animateSwap('c-rem', rawObs.candidates_remaining);
+                    animateSwap('c-resume', rawObs.current_candidate.resume_text);
+                }
+            }
+        }
+
+        function submitDecision(decision) {
+            if (!ws) return;
+            document.getElementById('spinner').classList.remove('hidden');
+            document.getElementById('status-text').innerHTML = `<span class="opacity-80">Processing decision...</span>`;
+            ws.send(JSON.stringify({
+                type: "step",
+                data: { decision: decision, reasoning: "User executed via Visual Interface" }
+            }));
+        }
+    </script>
+</body>
+
+</html>
