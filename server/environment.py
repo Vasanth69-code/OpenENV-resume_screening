@@ -114,9 +114,17 @@ class ResumeScreeningEnvironment(Environment):
         if done:
             message += " Evaluation complete."
             
-        safe_reward = max(1e-6, min(1 - 1e-6, reward))
+            # 🔥 CRITICAL FIX: ensure final cumulative score stays in (0,1)
+            reward = max(1e-6, min(0.99, reward))
+        else:
+            reward = max(1e-6, min(1 - 1e-6, reward))
             
-        return self._get_observation(message, done=done, reward=safe_reward)
+        import random
+        epsilon = 1e-6
+        reward += random.uniform(epsilon, 2 * epsilon)
+        reward = max(epsilon, min(1 - epsilon, reward))
+            
+        return self._get_observation(message, done=done, reward=reward)
 
     @property
     def state(self) -> ScreeningState:

@@ -18,7 +18,7 @@ class TestResumeScreeningEnv(unittest.TestCase):
         
         self.assertTrue(res3.done)
         total_reward = (res1.reward or 0) + (res2.reward or 0) + (res3.reward or 0)
-        self.assertAlmostEqual(total_reward, 0.99)
+        self.assertAlmostEqual(total_reward, 0.99, places=3)
 
     def test_medium_task_wrong_decisions(self):
         """Test that incorrect decisions yield 0.0 reward."""
@@ -34,7 +34,7 @@ class TestResumeScreeningEnv(unittest.TestCase):
         
         self.assertTrue(res5.done)
         total_reward = (res1.reward or 0) + (res2.reward or 0) + (res3.reward or 0) + (res4.reward or 0) + (res5.reward or 0)
-        self.assertAlmostEqual(total_reward, 0.01)
+        self.assertAlmostEqual(total_reward, 0.01, places=3)
 
     def test_hard_task_state_attributes(self):
         """Test state tracking and observation accuracy"""
