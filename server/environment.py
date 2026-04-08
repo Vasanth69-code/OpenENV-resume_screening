@@ -82,15 +82,14 @@ class ResumeScreeningEnvironment(Environment):
         should_select = self._ground_truth[self._state.current_index]
         
         # Calculate graded reward for this individual step
-        # Score must be STRICTLY between 0 and 1, so a perfect run sums to 0.99
-        # and a completely wrong run sums to 0.01.
         n_total = len(self._state.candidates)
-        reward_correct = 0.99 / n_total
-        reward_incorrect = 0.01 / n_total
-        
+
+        reward_correct = 0.8 / n_total
+        reward_incorrect = 0.2 / n_total
+
         reward = 0.0
         message = ""
-        
+
         if action.decision == "select":
             if should_select:
                 reward = reward_correct
@@ -114,15 +113,8 @@ class ResumeScreeningEnvironment(Environment):
         if done:
             message += " Evaluation complete."
             
-            # 🔥 CRITICAL FIX: ensure final cumulative score stays in (0,1)
-            reward = max(1e-6, min(0.99, reward))
-        else:
-            reward = max(1e-6, min(1 - 1e-6, reward))
-            
-        import random
-        epsilon = 1e-6
-        reward += random.uniform(epsilon, 2 * epsilon)
-        reward = max(epsilon, min(1 - epsilon, reward))
+        # ✅ ONLY THIS CLAMP
+        reward = max(1e-6, min(1 - 1e-6, reward))
             
         return self._get_observation(message, done=done, reward=reward)
 
