@@ -49,6 +49,7 @@ class ResumeScreeningEnvironment(Environment):
     def __init__(self):
         self._state = ScreeningState()
         self._ground_truth: List[bool] = []
+        self._total_reward = 0.0
 
     def reset(self, seed=None, episode_id=None, task="easy", **kwargs) -> ScreeningObservation:
         task_data = TASKS.get(task, TASKS["easy"])
@@ -69,6 +70,8 @@ class ResumeScreeningEnvironment(Environment):
             selected_candidates=[]
         )
         
+        self._total_reward = 0.0
+        
         return self._get_observation("Started screening task. Review the first candidate.")
 
     def step(self, action: ScreeningAction, timeout_s=None, **kwargs) -> ScreeningObservation:
@@ -76,7 +79,7 @@ class ResumeScreeningEnvironment(Environment):
         
         if self._state.current_index >= len(self._state.candidates):
             # Already done, no more reward
-            return self._get_observation("No candidates remaining.", done=True, reward=1e-6)
+            return self._get_observation("No candidates remaining.", done=True, reward=0.5)
             
         current_candidate = self._state.candidates[self._state.current_index]
         should_select = self._ground_truth[self._state.current_index]
@@ -115,6 +118,8 @@ class ResumeScreeningEnvironment(Environment):
             
         # ✅ ONLY THIS CLAMP
         reward = max(1e-6, min(1 - 1e-6, reward))
+        
+        self._total_reward += reward
             
         return self._get_observation(message, done=done, reward=reward)
 
