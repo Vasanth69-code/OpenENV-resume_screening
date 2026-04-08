@@ -82,25 +82,29 @@ class ResumeScreeningEnvironment(Environment):
         should_select = self._ground_truth[self._state.current_index]
         
         # Calculate graded reward for this individual step
-        # Every correct decision gives 1.0 / N, so a perfect run sums to 1.0
+        # Score must be STRICTLY between 0 and 1, so a perfect run sums to 0.99
+        # and a completely wrong run sums to 0.01.
         n_total = len(self._state.candidates)
+        reward_correct = 0.99 / n_total
+        reward_incorrect = 0.01 / n_total
+        
         reward = 0.0
         message = ""
         
         if action.decision == "select":
             if should_select:
-                reward = 1.0 / n_total
+                reward = reward_correct
                 message = f"Correctly selected {current_candidate.name}."
             else:
-                reward = 0.0
+                reward = reward_incorrect
                 message = f"Incorrectly selected {current_candidate.name}."
             self._state.selected_candidates.append(current_candidate.id)
         elif action.decision == "reject":
             if not should_select:
-                reward = 1.0 / n_total
+                reward = reward_correct
                 message = f"Correctly rejected {current_candidate.name}."
             else:
-                reward = 0.0
+                reward = reward_incorrect
                 message = f"Incorrectly rejected {current_candidate.name}."
                 
         # Move to next candidate
