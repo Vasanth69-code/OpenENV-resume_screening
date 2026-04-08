@@ -76,7 +76,7 @@ class ResumeScreeningEnvironment(Environment):
         
         if self._state.current_index >= len(self._state.candidates):
             # Already done, no more reward
-            return self._get_observation("No candidates remaining.", done=True, reward=0.0)
+            return self._get_observation("No candidates remaining.", done=True, reward=1e-6)
             
         current_candidate = self._state.candidates[self._state.current_index]
         should_select = self._ground_truth[self._state.current_index]
@@ -114,7 +114,9 @@ class ResumeScreeningEnvironment(Environment):
         if done:
             message += " Evaluation complete."
             
-        return self._get_observation(message, done=done, reward=reward)
+        safe_reward = max(1e-6, min(1 - 1e-6, reward))
+            
+        return self._get_observation(message, done=done, reward=safe_reward)
 
     @property
     def state(self) -> ScreeningState:
