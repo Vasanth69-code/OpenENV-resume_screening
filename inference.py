@@ -13,10 +13,6 @@ client = OpenAI(api_key=HF_TOKEN or os.getenv("OPENAI_API_KEY", "sk-dummy"), bas
 
 
 def pre_screen_all_candidates(job_description: str, candidates: list, task_name: str) -> dict:
-    """
-    First pass: show ALL candidates to the LLM at once and get decisions for everyone.
-    Returns a dict of {candidate_id: {"decision": ..., "reasoning": ...}}
-    """
     candidates_text = ""
     for i, c in enumerate(candidates):
         candidates_text += f"\nCandidate {i+1} (ID: {c['id']}):\n  Name: {c['name']}\n  Resume: {c['resume']}\n"
@@ -34,8 +30,8 @@ IMPORTANT RULES:
 Respond ONLY with a valid JSON object like this:
 {
   "decisions": {
-    "c1": {"decision": "select" or "reject", "reasoning": "brief reason"},
-    "c2": {"decision": "select" or "reject", "reasoning": "brief reason"}
+    "c1": {"decision": "select", "reasoning": "brief reason"},
+    "c2": {"decision": "reject", "reasoning": "brief reason"}
   }
 }"""
 
@@ -69,40 +65,50 @@ Now evaluate all candidates and return your decisions as JSON."""
 def run_task(task_name: str):
     print(f"[START] task={task_name} env=resume_screening model={MODEL_NAME}")
 
+    # Single env instance — no temp_env, no peek_env
     try:
         env = ResumeScreeningEnv(base_url=ENV_URL).sync()
         reset_result = env.reset(task=task_name)
         obs = reset_result.observation
     except Exception as e:
-        print(f"Failed to connect to environment at {ENV_URL}: {e}")
+        print(f"[ERROR] Failed to connect: {e}")
         return
 
-    # Phase 1: collect all candidate info by peeking at the environment state
-    # This avoids creating multiple concurrent client sessions (which hits the 1/1 capacity limit)
+    # ── Phase 1: walk through env with dummy actions to collect all candidates ──
     candidate_pool = []
-    try:
-        current_state = env.state
-        if current_state and hasattr(current_state, "candidates"):
-            for c in current_state.candidates:
-                candidate_pool.append({
-                    "id": c.id,
-                    "name": c.name,
-                    "resume": c.resume_text
-                })
-    except Exception as e:
-        print(f"[ERROR] Failed to read candidates from state: {e}")
+    job_description = obs.job_description
+    current_obs = obs
+
+    while current_obs.current_candidate is not None:
+        c = current_obs.current_candidate
+        candidate_pool.append({
+            "id": c.id,
+            "name": c.name,
+            "resume": c.resume_text
+        })
+        try:
+            step_result = env.step(ScreeningAction(decision="reject", reasoning="collecting"))
+            current_obs = step_result.observation
+            if step_result.done:
+                break
+        except Exception as e:
+            print(f"[COLLECT ERROR] {e}")
+            break
 
     print(f"[PRE-SCREEN] Collected {len(candidate_pool)} candidates. Running bulk analysis...")
 
-    # Phase 2: bulk LLM decision on all candidates at once
-    pre_decisions = pre_screen_all_candidates(
-        obs.job_description,
-        candidate_pool,
-        task_name
-    )
-    print(f"[PRE-SCREEN] LLM decisions: { {k: v['decision'] for k, v in pre_decisions.items()} }")
+    # ── Phase 2: bulk LLM decision on ALL candidates at once ──
+    pre_decisions = pre_screen_all_candidates(job_description, candidate_pool, task_name)
+    print(f"[PRE-SCREEN] Decisions: { {k: v['decision'] for k, v in pre_decisions.items()} }")
 
-    # Phase 3: step through the REAL env using pre-made decisions
+    # ── Phase 3: reset the SAME env, step with real decisions ──
+    try:
+        reset_result2 = env.reset(task=task_name)
+        obs = reset_result2.observation
+    except Exception as e:
+        print(f"[ERROR] Failed to reset for phase 3: {e}")
+        return
+
     done = False
     step_n = 0
     rewards = []
@@ -124,7 +130,7 @@ def run_task(task_name: str):
                     decision = "reject"
                     reasoning = "Invalid LLM decision, defaulting to reject"
             else:
-                # Fallback: individual LLM call if pre-screen missed this candidate
+                # Fallback if LLM missed a candidate
                 print(f"[FALLBACK] No pre-screen decision for {current_id}, calling LLM individually")
                 try:
                     fallback_response = client.chat.completions.create(
