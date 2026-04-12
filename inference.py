@@ -77,40 +77,20 @@ def run_task(task_name: str):
         print(f"Failed to connect to environment at {ENV_URL}: {e}")
         return
 
-    # --- FIRST PASS: collect all candidates from observation ---
-    # We peek at the environment state to get all candidates upfront
-    all_candidates = []
-    temp_env = ResumeScreeningEnv(base_url=ENV_URL).sync()
-    temp_reset = temp_env.reset(task=task_name)
-    temp_obs = temp_reset.observation
-
-    # Walk through env just to collect candidate info (without submitting real decisions)
-    # Instead, use the state directly from the first reset
-    # Since environment exposes candidates in state, collect from obs loop
-    # We'll do a two-phase approach: pre-screen then step
-
-    # Phase 1: collect all candidate info by peeking at each step observation
+    # Phase 1: collect all candidate info by peeking at the environment state
+    # This avoids creating multiple concurrent client sessions (which hits the 1/1 capacity limit)
     candidate_pool = []
-    peek_env = ResumeScreeningEnv(base_url=ENV_URL).sync()
-    peek_reset = peek_env.reset(task=task_name)
-    peek_obs = peek_reset.observation
-
-    current_peek = peek_obs
-    while current_peek.current_candidate is not None:
-        c = current_peek.current_candidate
-        candidate_pool.append({
-            "id": c.id,
-            "name": c.name,
-            "resume": c.resume_text
-        })
-        # Use a neutral reject to advance (we discard this env after peeking)
-        try:
-            peek_result = peek_env.step(ScreeningAction(decision="reject", reasoning="peeking"))
-            current_peek = peek_result.observation
-            if peek_result.done:
-                break
-        except Exception:
-            break
+    try:
+        current_state = env.state
+        if current_state and hasattr(current_state, "candidates"):
+            for c in current_state.candidates:
+                candidate_pool.append({
+                    "id": c.id,
+                    "name": c.name,
+                    "resume": c.resume_text
+                })
+    except Exception as e:
+        print(f"[ERROR] Failed to read candidates from state: {e}")
 
     print(f"[PRE-SCREEN] Collected {len(candidate_pool)} candidates. Running bulk analysis...")
 
@@ -184,10 +164,6 @@ def run_task(task_name: str):
     finally:
         try:
             env.close()
-        except Exception:
-            pass
-        try:
-            peek_env.close()
         except Exception:
             pass
 
